@@ -1,0 +1,110 @@
+# GLOSA speed advisor - all settings of the node except the topic names and the map path live in this file.
+#
+# Change a value here and restart the node, or change it while the node runs:
+#   ros2 param set /glosa_speed_advisor rules.v_min_kmh 20.0
+#   ros2 param get /glosa_speed_advisor rules.v_min_kmh
+#   ros2 param dump /glosa_speed_advisor          # print everything
+# Runtime changes are lost on restart unless you also write them here.
+# Settings marked [restart] are read only when the node starts.
+#
+# Symbols:  d = distance from the front bumper to the stop line, v_map = lanelet speed limit,
+#           T = time until the signal state changes, G/Y/R = green/yellow/red duration,
+#           t_map = time to reach the stop line at v_map.
+
+/**:
+  ros__parameters:
+
+    # Topic names and the map file are NOT here: they are launch arguments, see
+    # launch/glosa_speed_advisor.launch.py  (map_file, spat_topic, odometry_topic,
+    # velocity_limit_topic, clear_velocity_limit_topic, status_topic).
+
+    # ------------------------------------------------------------------ output
+    output:
+      sender: glosa               # [restart] our name in Autoware's velocity limit table
+      clear_on_startup: true      # [restart] remove a limit left over from a previous run
+      republish_period_s: 1.0     # resend the active limit this often (0 = send only on change)
+      # Deceleration is normal Autoware behaviour by default (use_constraints: false):
+      # the velocity smoother slows down with its own acceleration and jerk limits.
+      # Set use_constraints: true to send the four limits below with the velocity limit.
+      use_constraints: false
+      max_acceleration: 1.0       # [m/s^2]
+      min_acceleration: -1.0      # [m/s^2] strongest deceleration (negative)
+      max_jerk: 1.0               # [m/s^3]
+      min_jerk: -1.0              # [m/s^3]
+
+    # ------------------------------------------------------------------ timing
+    timing:
+      watchdog_rate_hz: 2.0       # [restart] timer that clears the limit when inputs go stale
+      spat_timeout_s: 1.0         # clear the limit if SPaT is older than this
+      odometry_timeout_s: 1.0     # clear the limit if the ego pose is older than this
+      min_hold_s: 1.0             # minimum time between two changes of the limit
+
+    # ----------------------------------------------------------------- vehicle
+    vehicle:
+      # Distance from base_link (rear axle, the pose in kinematic_state) to the front
+      # bumper = wheel_base + front_overhang (Pacifica: 3.089 + 0.96). d is measured
+      # from the front bumper, because that is what Autoware stops at the stop line.
+      base_link_to_front_m: 4.05
+
+    # -------------------------------------------------------------- activation
+    activation:
+      distance_m: 300.0           # GLOSA acts only when d is below this
+      min_speed_kmh: 10.0         # a new limit is started only above this ego speed
+      lateral_tolerance_m: 6.0    # max sideways offset from the approach axis
+      heading_tolerance_deg: 45.0 # ego heading must match the approach heading
+      require_fixed_time: true    # act only when SPaT minEndTime == maxEndTime
+      fixed_time_tolerance_s: 0.3 # max |max - min| still treated as fixed-time
+
+    # ------------------------------------------------------------------- rules
+    rules:
+      v_min_kmh: 15.0             # GLOSA never asks for less than this (50 % of a 30 km/h limit)
+      margin_green_start_s: 1.0   # arrive at least this long after green starts
+      margin_green_end_s: 2.0     # green counts as reachable only if t_map + this < T
+      freeze_distance_m: 30.0     # below this d the last decision is kept until the stop line
+      yellow_ignore_distance_m: 50.0  # on yellow, do nothing when d is below this
+      step_kmh: 5.0               # the limit is rounded down to a multiple of this (> 0)
+      raise_hysteresis_kmh: 1.0   # raise the limit only when the exact value is this far above the next step
+      use_speed_correction: true  # add the time needed to accelerate back to v_map to t_map
+      accel_for_correction_mps2: 1.0  # acceleration assumed in that correction
+
+    # -------------------------------------------------------------- approaches
+    # One entry per signalized approach. List the entries in "names"
+    # [restart for adding or removing names; the values can be changed at runtime].
+    #
+    #   intersection_id   SPaT IntersectionID
+    #   signal_group      SPaT signalGroup of the ego lane
+    #   green_s, yellow_s, red_s   fixed-time plan of this signal group (G, Y, R).
+    #                     Needed to target the next green when the light is green or
+    #                     yellow. 0 = unknown: then GLOSA acts only while it is red.
+    #
+    # Where the stop line is - choose ONE of the two ways:
+    #
+    # A) From the lanelet2 map (recommended). Start the node with
+    #        map_file:=/path/to/lanelet2_map.osm
+    #    and give the ID of the traffic light in the map:
+    #   traffic_light_group_id   ID of the traffic light regulatory element (> 0).
+    #                     Stop line, driving direction and speed limit are read from
+    #                     the map, for every lane of that traffic light. To list the
+    #                     IDs:  ros2 run glosa_speed_advisor list_traffic_lights <map.osm>
+    #   speed_limit_kmh   0 = use the lanelet speed limit; > 0 = use this value instead
+    #   (stop_line_x, stop_line_y and heading_deg are ignored)
+    #
+    # B) By hand: traffic_light_group_id: 0 and
+    #   stop_line_x/y     centre of the stop line of the ego lane, map frame [m]
+    #   heading_deg       driving direction towards the stop line, map frame
+    #                     (0 = +x axis, 90 = +y axis, counter-clockwise)
+    #   speed_limit_kmh   the lanelet speed limit (v_map), must be > 0
+    approaches:
+      names: ["example_eastbound"]
+
+      example_eastbound:
+        intersection_id: 17342
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 173422
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0

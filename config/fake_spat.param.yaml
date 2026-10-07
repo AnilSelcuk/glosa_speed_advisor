@@ -1,0 +1,35 @@
+# Fake fixed-time SPaT publisher - for the planning simulator only.
+# Never run it on the vehicle together with the real SPaT bridge.
+#
+# Topic names are launch arguments, see launch/fake_spat.launch.py.
+# Values can be changed while the node runs, for example:
+#   ros2 param set /fake_spat signals.example_eastbound.red_s 30.0
+# Restart all cycles from the beginning:
+#   ros2 service call /fake_spat/restart std_srvs/srv/Trigger
+
+/**:
+  ros__parameters:
+    rate_hz: 10.0                 # [restart] SPaT messages per second (real RSUs send 10)
+
+    # One entry per signal. intersection_id, signal_group and the three durations
+    # must be the same as in the "approaches" table of glosa.param.yaml.
+    #
+    #   offset_s   where in the cycle the signal is when the node starts (or restarts).
+    #              The cycle is green -> yellow -> red, so with G=40, Y=4, R=46:
+    #              0 = green just started, 40 = yellow starts, 44 = red starts,
+    #              60 = red with 30 s left.
+    #   traffic_light_group_id   optional. ID of the traffic light regulatory element
+    #              in the lanelet2 map. When > 0 the same state is also sent to
+    #              Autoware as a traffic signal, so the simulated vehicle stops at red.
+    #              0 = publish SPaT only.
+    signals:
+      names: ["example_eastbound"]
+
+      example_eastbound:
+        intersection_id: 17342
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 0.0
+        traffic_light_group_id: 173422
