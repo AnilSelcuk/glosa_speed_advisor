@@ -23,13 +23,88 @@
     #              Autoware as a traffic signal, so the simulated vehicle stops at red.
     #              0 = publish SPaT only.
     signals:
-      names: ["example_eastbound"]
+      # Same signals as the "approaches" table of glosa.param.yaml. Cycle 40/4/46 s.
+      # Side streets and conflicting groups run 45 s after the main street, so they
+      # are green while it is red.
+      names: ["peeples_mlk", "peeples_side", "douglas_mlk", "houston_mlk", "lindsay_mlk", "i19846_mlk", "i19846_side", "i22762_g1", "i22762_g4"]
 
-      example_eastbound:
-        intersection_id: 17342
+      peeples_mlk:   # MLK, westbound
+        intersection_id: 14867
         signal_group: 2
         green_s: 40.0
         yellow_s: 4.0
         red_s: 46.0
         offset_s: 0.0
+        traffic_light_group_id: 148672
+
+      peeples_side:   # side street, opposite phase of peeples_mlk
+        intersection_id: 14867
+        signal_group: 22
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 45.0
+        traffic_light_group_id: 1486722
+
+      douglas_mlk:   # MLK, both directions
+        intersection_id: 17342
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 30.0
         traffic_light_group_id: 173422
+
+      houston_mlk:   # MLK, both directions
+        intersection_id: 24187
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 60.0
+        traffic_light_group_id: 241872
+
+      lindsay_mlk:   # MLK, both directions
+        intersection_id: 12753
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 15.0
+        traffic_light_group_id: 127532
+
+      i19846_mlk:   # MLK, westbound
+        intersection_id: 19846
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 45.0
+        traffic_light_group_id: 198462
+
+      i19846_side:   # side street, opposite phase of i19846_mlk
+        intersection_id: 19846
+        signal_group: 13
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 0.0
+        traffic_light_group_id: 1984613
+
+      i22762_g1:   # signal group 1
+        intersection_id: 22762
+        signal_group: 1
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 20.0
+        traffic_light_group_id: 227621
+
+      i22762_g4:   # signal group 4, opposite phase of i22762_g1
+        intersection_id: 22762
+        signal_group: 4
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        offset_s: 65.0
+        traffic_light_group_id: 227624

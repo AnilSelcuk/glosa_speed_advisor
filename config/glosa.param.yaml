@@ -1,8 +1,8 @@
 # GLOSA speed advisor - all settings of the node except the topic names and the map path live in this file.
 #
 # Change a value here and restart the node, or change it while the node runs:
-#   ros2 param set /glosa_speed_advisor rules.v_min_kmh 20.0
-#   ros2 param get /glosa_speed_advisor rules.v_min_kmh
+#   ros2 param set /glosa_speed_advisor rules.v_min_ratio 0.6
+#   ros2 param get /glosa_speed_advisor rules.v_min_ratio
 #   ros2 param dump /glosa_speed_advisor          # print everything
 # Runtime changes are lost on restart unless you also write them here.
 # Settings marked [restart] are read only when the node starts.
@@ -57,7 +57,12 @@
 
     # ------------------------------------------------------------------- rules
     rules:
-      v_min_kmh: 15.0             # GLOSA never asks for less than this (50 % of a 30 km/h limit)
+      # Lowest speed GLOSA may ask for:  v_min = max(v_min_kmh, v_min_ratio * v_map),
+      # where v_map is the speed limit of the lanelet before the stop line (from the map).
+      # Example with 0.5 and 10: 35 km/h lane -> 17.5, 20 km/h lane -> 10, 16 km/h lane -> 10.
+      # v_min_ratio: 0 gives a fixed v_min = v_min_kmh on every lane.
+      v_min_ratio: 0.5            # fraction of the lanelet speed limit
+      v_min_kmh: 10.0             # v_min never goes below this
       margin_green_start_s: 1.0   # arrive at least this long after green starts
       margin_green_end_s: 2.0     # green counts as reachable only if t_map + this < T
       freeze_distance_m: 30.0     # below this d the last decision is kept until the stop line
@@ -95,15 +100,114 @@
     #                     (0 = +x axis, 90 = +y axis, counter-clockwise)
     #   speed_limit_kmh   the lanelet speed limit (v_map), must be > 0
     approaches:
-      names: ["example_eastbound"]
+      # All traffic lights of the cc26_pavilion map. SPaT IDs follow the map IDs
+      # (map ID = intersection_id followed by signal_group); check them against the
+      # real SPaT before using this table on the vehicle.
+      names: ["peeples_mlk", "peeples_side", "douglas_mlk", "houston_mlk", "lindsay_mlk", "i19846_mlk", "i19846_side", "i22762_g1", "i22762_g4"]
 
-      example_eastbound:
+      peeples_mlk:   # MLK, westbound
+        intersection_id: 14867
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 148672
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0
+
+      peeples_side:   # side street, opposite phase of peeples_mlk
+        intersection_id: 14867
+        signal_group: 22
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 1486722
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0
+
+      douglas_mlk:   # MLK, both directions
         intersection_id: 17342
         signal_group: 2
         green_s: 40.0
         yellow_s: 4.0
         red_s: 46.0
         traffic_light_group_id: 173422
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0
+
+      houston_mlk:   # MLK, both directions
+        intersection_id: 24187
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 241872
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0
+
+      lindsay_mlk:   # MLK, both directions
+        intersection_id: 12753
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 127532
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0
+
+      i19846_mlk:   # MLK, westbound
+        intersection_id: 19846
+        signal_group: 2
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 198462
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0
+
+      i19846_side:   # side street, opposite phase of i19846_mlk
+        intersection_id: 19846
+        signal_group: 13
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 1984613
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0
+
+      i22762_g1:   # signal group 1
+        intersection_id: 22762
+        signal_group: 1
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 227621
+        stop_line_x: 0.0
+        stop_line_y: 0.0
+        heading_deg: 0.0
+        speed_limit_kmh: 0
+
+      i22762_g4:   # signal group 4, opposite phase of i22762_g1
+        intersection_id: 22762
+        signal_group: 4
+        green_s: 40.0
+        yellow_s: 4.0
+        red_s: 46.0
+        traffic_light_group_id: 227624
         stop_line_x: 0.0
         stop_line_y: 0.0
         heading_deg: 0.0

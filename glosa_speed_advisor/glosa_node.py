@@ -41,7 +41,7 @@ from v2i_spat_msgs.msg import MovementEvent, SpatPacket
 from glosa_speed_advisor import lanelet_osm
 from glosa_speed_advisor.glosa_core import (GREEN, KMH, RED, UNKNOWN, YELLOW,
                                             Approach, GlosaEngine, Params,
-                                            Phase, SignalTiming,
+                                            Phase, SignalTiming, v_min_for,
                                             now_tenths_of_hour, remaining_s)
 
 # name -> default. topics.* and map.osm_file are set by the launch file, the rest by
@@ -74,7 +74,8 @@ DEFAULTS: Dict[str, Any] = {
     "activation.heading_tolerance_deg": 45.0,
     "activation.require_fixed_time": True,
     "activation.fixed_time_tolerance_s": 0.3,
-    "rules.v_min_kmh": 15.0,
+    "rules.v_min_ratio": 0.5,
+    "rules.v_min_kmh": 10.0,
     "rules.margin_green_start_s": 1.0,
     "rules.margin_green_end_s": 2.0,
     "rules.freeze_distance_m": 30.0,
@@ -95,6 +96,7 @@ PARAM_FIELDS = {
     "activation.heading_tolerance_deg": "heading_tolerance_deg",
     "activation.require_fixed_time": "require_fixed_time",
     "activation.fixed_time_tolerance_s": "fixed_time_tolerance_s",
+    "rules.v_min_ratio": "v_min_ratio",
     "rules.v_min_kmh": "v_min_kmh",
     "rules.margin_green_start_s": "margin_green_start_s",
     "rules.margin_green_end_s": "margin_green_end_s",
@@ -216,7 +218,7 @@ class GlosaNode(Node):
             self.get_logger().info(
                 f"  {a.name}: SPaT {a.intersection_id}/{a.signal_group}, stop line "
                 f"({a.stop_x:.1f}, {a.stop_y:.1f}), heading {math.degrees(a.heading_rad):.0f} deg, "
-                f"{a.speed_limit_kmh:.0f} km/h")
+                f"{a.speed_limit_kmh:.0f} km/h, v_min {v_min_for(a.speed_limit_kmh, params):.1f} km/h")
 
     # --------------------------------------------------------- parameters
 

@@ -12,7 +12,8 @@ Symbols used in the rules
 -------------------------
 d        distance from the front bumper to the stop line [m]
 v_map    lanelet speed limit [km/h]
-v_min    lowest speed GLOSA may ask for [km/h]
+v_min    lowest speed GLOSA may ask for [km/h]:
+         max(v_min_kmh, v_min_ratio * v_map), never above v_map
 T        time until the current signal state ends [s]
 G, Y, R  green / yellow / red durations of the signal group [s]
 t_map    arrival time at the stop line when driving at v_map [s]
@@ -180,7 +181,8 @@ class Params:
     require_fixed_time: bool = True
     fixed_time_tolerance_s: float = 0.3
     # --- rule set
-    v_min_kmh: float = 15.0
+    v_min_ratio: float = 0.5     # v_min as a fraction of the lanelet speed limit (0 = off)
+    v_min_kmh: float = 10.0      # v_min never goes below this
     margin_green_start_s: float = 1.0
     margin_green_end_s: float = 2.0
     freeze_distance_m: float = 30.0
@@ -204,10 +206,14 @@ class Params:
                 raise ValueError(f"{name} must be >= 0")
 
         for n in ("activation_distance_m", "lateral_tolerance_m", "heading_tolerance_deg",
-                  "v_min_kmh", "step_kmh", "accel_for_correction_mps2",
+                  "step_kmh", "accel_for_correction_mps2",
                   "spat_timeout_s", "odometry_timeout_s"):
             positive(n)
-        for n in ("base_link_to_front_m", "min_activation_speed_kmh", "fixed_time_tolerance_s",
+        if not 0.0 <= self.v_min_ratio < 1.0:
+            raise ValueError("v_min_ratio must be in [0, 1)")
+        if self.v_min_ratio <= 0.0 and self.v_min_kmh <= 0.0:
+            raise ValueError("v_min_kmh must be > 0 when v_min_ratio is 0")
+        for n in ("v_min_kmh", "base_link_to_front_m", "min_activation_speed_kmh", "fixed_time_tolerance_s",
                   "margin_green_start_s", "margin_green_end_s", "freeze_distance_m",
                   "yellow_ignore_distance_m", "raise_hysteresis_kmh", "min_hold_s"):
             non_negative(n)
@@ -234,6 +240,11 @@ def find_approach(approaches: List[Approach], x: float, y: float, yaw: float,
             if best is None or d < best[1]:
                 best = (a, d)
     return best
+
+
+def v_min_for(v_map_kmh: float, p: Params) -> float:
+    """Lowest speed GLOSA may ask for on a lane with speed limit v_map [km/h]."""
+    return min(max(p.v_min_kmh, p.v_min_ratio * v_map_kmh), v_map_kmh)
 
 
 def arrival_time_s(d: float, v_map_kmh: float, v_cur_kmh: float, p: Params) -> float:
@@ -266,7 +277,7 @@ def advise(state: str, T: Optional[float], d: float, v_map_kmh: float,
         return Advice(None, "no timing information")
     T = max(T, 0.0)
     t_map = arrival_time_s(d, v_map_kmh, v_cur_kmh, p)
-    v_min = min(p.v_min_kmh, v_map_kmh)
+    v_min = v_min_for(v_map_kmh, p)
 
     if state == GREEN:
         if t_map + p.margin_green_end_s < T:
@@ -312,7 +323,7 @@ def quantize(raw_kmh: Optional[float], current_kmh: Optional[float],
     q = math.floor(raw_kmh / step + 1e-9) * step
     if current_kmh is not None and q > current_kmh and raw_kmh < q + p.raise_hysteresis_kmh:
         q = max(q - step, current_kmh)
-    q = max(q, min(p.v_min_kmh, v_map_kmh))
+    q = max(q, v_min_for(v_map_kmh, p))
     if q >= v_map_kmh - 1e-6:
         return None
     return q
@@ -406,5 +417,5 @@ class GlosaEngine:
             self.limit_kmh = target
             self.last_change_t = t
             changed = True
-        cur = "none" if self.limit_kmh is None else f"{self.limit_kmh:.0f} km/h"
+        cur = "none" if self.limit_kmh is None else f"{self.limit_kmh:g} km/h"
         return Result(self.limit_kmh, changed, f"[limit: {cur}] {status}")

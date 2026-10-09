@@ -52,6 +52,9 @@ With `T_green` known:
 - otherwise: `limit = d / (T_green + 1 s)`, kept between `v_min` and `v_map` and rounded
   down to a 5 km/h step.
 
+`v_min = max(10 km/h, 0.5 * v_map)`: it follows the speed limit of the lane, so a 35 km/h
+lane gives 17.5 km/h and a 20 km/h lane 10 km/h.
+
 Always: below 30 m the last decision is frozen until the stop line; stale SPaT, a stale ego
 pose, an unknown signal state or a passed stop line remove the limit. All numbers above are
 parameters.
@@ -265,7 +268,8 @@ List them with `ros2 launch glosa_speed_advisor glosa_speed_advisor.launch.py --
 
 | Parameter | Default | Meaning |
 |---|---|---|
-| `rules.v_min_kmh` | 15 | lowest speed GLOSA may ask for |
+| `rules.v_min_ratio` | 0.5 | lowest speed GLOSA may ask for, as a fraction of the lanelet speed limit |
+| `rules.v_min_kmh` | 10 | `v_min` never goes below this |
 | `rules.margin_green_start_s` | 1.0 | arrive at least this long after green starts |
 | `rules.margin_green_end_s` | 2.0 | green counts as reachable only with this much time to spare |
 | `rules.step_kmh` | 5.0 | the limit is rounded down to a multiple of this |
@@ -278,7 +282,7 @@ List them with `ros2 launch glosa_speed_advisor glosa_speed_advisor.launch.py --
 Most parameters can be changed while the node runs:
 
 ```bash
-ros2 param set /glosa_speed_advisor rules.v_min_kmh 20.0
+ros2 param set /glosa_speed_advisor rules.v_min_ratio 0.6
 ```
 
 Those marked `[restart]` in the YAML file are read only at startup.

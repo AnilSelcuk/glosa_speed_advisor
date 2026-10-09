@@ -7,7 +7,8 @@ import pytest
 from glosa_speed_advisor.glosa_core import (
     GREEN, RED, UNKNOWN, YELLOW, Approach, GlosaEngine, Params, Phase,
     SignalTiming, advise, arrival_time_s, cycle_state, find_approach,
-    minute_of_year, now_tenths_of_hour, quantize, remaining_s, time_mark)
+    minute_of_year, now_tenths_of_hour, quantize, remaining_s, time_mark,
+    v_min_for)
 
 P = Params()
 PLAN = SignalTiming(green_s=40.0, yellow_s=4.0, red_s=46.0)  # 90 s cycle
@@ -74,7 +75,7 @@ def test_red_map_speed_already_fine():
 def test_red_too_long_minimize_waiting():
     # 100 m, red for 80 s: even v_min arrives early -> v_min
     a = adv(RED, 80.0, 100.0)
-    assert a.speed_kmh == P.v_min_kmh
+    assert a.speed_kmh == v_min_for(V, P) == 15.0
     assert "minimize waiting" in a.reason
 
 
@@ -87,7 +88,7 @@ def test_red_works_without_plan():
 
 def test_yellow_far_uses_red_rule():
     # 2 s yellow + 46 s red = 48 s -> 200 / 49 s = 14.7 km/h -> below v_min
-    assert adv(YELLOW, 2.0, 200.0).speed_kmh == P.v_min_kmh
+    assert adv(YELLOW, 2.0, 200.0).speed_kmh == v_min_for(V, P)
     # 300 m / 49 s = 22.0 km/h
     assert adv(YELLOW, 2.0, 300.0).speed_kmh == pytest.approx(300.0 / 49.0 * 3.6)
 
@@ -104,7 +105,7 @@ def test_never_above_map_limit_or_below_vmin():
         for T in (0.0, 3.0, 10.0, 25.0, 45.0, 80.0):
             for d in (35.0, 60.0, 120.0, 250.0, 300.0):
                 s = adv(state, T, d).speed_kmh
-                assert s is None or P.v_min_kmh <= s <= V
+                assert s is None or v_min_for(V, P) <= s <= V
 
 
 def test_speed_correction_adds_acceleration_time():
@@ -476,3 +477,20 @@ def test_parse_speed_limit():
     assert parse_speed_limit("30.00 km/h") == 30.0
     assert parse_speed_limit("25mph") == pytest.approx(40.23, abs=0.01)
     assert parse_speed_limit(None) is None and parse_speed_limit("fast") is None
+
+
+def test_v_min_follows_the_lanelet_speed_limit():
+    p = Params()                                   # ratio 0.5, floor 10 km/h
+    assert v_min_for(35.0, p) == 17.5
+    assert v_min_for(20.0, p) == 10.0              # floor
+    assert v_min_for(8.0, p) == 8.0                # never above the limit itself
+    fixed = Params(v_min_ratio=0.0, v_min_kmh=15.0)
+    assert v_min_for(35.0, fixed) == v_min_for(50.0, fixed) == 15.0
+    # 35 km/h lane, 100 m, red for 80 s: GLOSA asks for 17.5, not 15
+    a = advise(RED, 80.0, 100.0, 35.0, 35.0, PLAN, p)
+    assert a.speed_kmh == 17.5
+    assert quantize(17.6, None, 35.0, p) == 17.5   # rounding never goes below v_min
+    with pytest.raises(ValueError):
+        Params(v_min_ratio=0.0, v_min_kmh=0.0).validate()
+    with pytest.raises(ValueError):
+        Params(v_min_ratio=1.2).validate()
